@@ -10,7 +10,7 @@ $_['text_paylike'] 			= '<a onclick="window.open(\'https://paylike.io/\');"><img
 $_['text_test'] 			= 'Test';
 $_['text_live'] 			= 'Live';
 $_['text_capture_instant'] 			= 'Instant';
-$_['text_capture_delayed'] 			= 'Delayed (e.g. on product shipping/delivery)';
+$_['text_capture_delayed'] 			= 'Capture via Paylike tool';
 
 // Entry
 // Ocean

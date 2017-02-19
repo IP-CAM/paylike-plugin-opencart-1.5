@@ -64,7 +64,7 @@ class ControllerPaymentPaylike extends Controller {
 		$this->data['entry_status'] = $this->language->get('entry_status');
 		$this->data['entry_sort_order'] = $this->language->get('entry_sort_order');
 
-		$this->data['default_payment_method_title'] = 'Pay with Paylike';
+		$this->data['default_payment_method_title'] = $this->config->get('default_payment_method_title');
 		$this->data['default_payment_method_description'] = $this->language->get('default_payment_method_description');
 		$this->data['default_entry_title'] = (!empty($this->config->get('config_name')))?$this->config->get('config_name'):'Payment';		
 		//$this->data['default_entry_description'] = $this->language->get('default_entry_description');
