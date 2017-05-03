@@ -2,490 +2,136 @@
 if ( ! class_exists( 'Paylike\Client' ) ) {
     require_once(DIR_SYSTEM . 'library/Paylike/Client.php');
 }
+
 class ControllerPaymentPaylike extends Controller {
-	private $error = array();
-
-	public function index() {
-		$this->load->language('payment/paylike');
-
-		$this->document->setTitle($this->language->get('heading_title'));
-
-		$this->load->model('setting/setting');
-
-		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
-			$this->model_setting_setting->editSetting('paylike', $this->request->post);
-
-			$this->session->data['success'] = $this->language->get('text_success');
-			$this->redirect($this->url->link('extension/payment', 'token=' . $this->session->data['token'], 'SSL'));
-		} else {
-			$this->data['error'] = @$this->error;
-		}
-
-		//Creating table if not exists already
-		$sql = "
-			CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "paylike_admin` (
-			`order_id` int(11) NOT NULL default '0',
-			`trans_id` varchar(255) NOT NULL,
-			`amount` int(11) NOT NULL default '0',
-			`action` varchar(32) NOT NULL default 'NO',
-			`captured` varchar(8) NOT NULL default 'NO',
-			PRIMARY KEY  (`order_id`)
-			) ENGINE=MyISAM DEFAULT CHARSET=utf8";
-		$this->db->query($sql);
-
-		$this->data['heading_title'] = $this->language->get('heading_title');
-		
-		$this->data['text_edit'] = $this->language->get('text_edit');
-		$this->data['text_enabled'] = $this->language->get('text_enabled');
-		$this->data['text_disabled'] = $this->language->get('text_disabled');
-		$this->data['text_yes'] = $this->language->get('text_yes');
-		$this->data['text_no'] = $this->language->get('text_no');
-		$this->data['text_all_zones'] = $this->language->get('text_all_zones');
-		$this->data['text_test'] = $this->language->get('text_test');
-		$this->data['text_live'] = $this->language->get('text_live');
-		$this->data['text_capture_instant'] = $this->language->get('text_capture_instant');
-		$this->data['text_capture_delayed'] = $this->language->get('text_capture_delayed');
-		
-		$this->data['payment_method_title'] = $this->language->get('payment_method_title');
-		$this->data['payment_method_description'] = $this->language->get('payment_method_description');
-		$this->data['entry_title'] = $this->language->get('entry_title');
-		$this->data['description_status'] = $this->language->get('description_status');		
-		$this->data['entry_description'] = $this->language->get('entry_description');
-		$this->data['entry_mode'] = $this->language->get('entry_mode');
-		$this->data['entry_test_key'] = $this->language->get('entry_test_key');
-		$this->data['entry_test_app_key'] = $this->language->get('entry_test_app_key');
-		$this->data['entry_live_key'] = $this->language->get('entry_live_key');
-		$this->data['entry_live_app_key'] = $this->language->get('entry_live_app_key');
-		
-		$this->data['entry_total'] = $this->language->get('entry_total');
-		$this->data['entry_order_status'] = $this->language->get('entry_order_status');
-		$this->data['entry_capture'] = $this->language->get('entry_capture');
-		$this->data['entry_geo_zone'] = $this->language->get('entry_geo_zone');
-		$this->data['entry_status'] = $this->language->get('entry_status');
-		$this->data['entry_sort_order'] = $this->language->get('entry_sort_order');
-
-		$this->data['default_payment_method_title'] = 'Pay with Paylike';
-		$this->data['default_payment_method_description'] = $this->language->get('default_payment_method_description');
-		$this->data['default_entry_title'] = (!empty($this->config->get('config_name')))?$this->config->get('config_name'):'Payment';		
-		//$this->data['default_entry_description'] = $this->language->get('default_entry_description');
-		$this->data['default_entry_description'] = '';
-
-		$this->data['help_paylike_payment_method_title'] = $this->language->get('help_paylike_payment_method_title');
-		$this->data['help_paylike_title'] = $this->language->get('help_paylike_title');
-		$this->data['help_paylike_payment_method_description'] = $this->language->get('help_paylike_payment_method_description');
-		$this->data['help_paylike_show_on_popup'] = $this->language->get('help_paylike_show_on_popup');
-		$this->data['help_paylike_description'] = $this->language->get('help_paylike_description');
-		$this->data['help_key'] = $this->language->get('help_key');
-		$this->data['help_app_key'] = $this->language->get('help_app_key');
-		$this->data['help_total'] = $this->language->get('help_total');
-		$this->data['help_capture'] = $this->language->get('help_capture');
-
-		$this->data['button_save'] = $this->language->get('button_save');
-		$this->data['button_cancel'] = $this->language->get('button_cancel');
-
-		if (isset($this->error['warning'])) {
-			$this->data['error_warning'] = $this->error['warning'];
-		} else {
-			$this->data['error_warning'] = '';
-		}
-
-		if (isset($this->error['paylike_payment_method_title'])) {
-			$this->data['error_payment_method_title'] = $this->error['paylike_payment_method_title'];
-		} else {
-			$this->data['error_payment_method_title'] = '';
-		}
-
-		if (isset($this->error['paylike_payment_method_description'])) {
-			$this->data['error_payment_method_description'] = $this->error['paylike_payment_method_description'];
-		} else {
-			$this->data['error_payment_method_description'] = '';
-		}
-
-		if (isset($this->error['paylike_title'])) {
-			$this->data['error_title'] = $this->error['paylike_title'];
-		} else {
-			$this->data['error_title'] = '';
-		}
-
-		/*if (isset($this->error['paylike_description'])) {
-			$this->data['error_description'] = $this->error['paylike_description'];
-		} else {
-			$this->data['error_description'] = '';
-		}*/
-
-		$paylike_mode = (isset($this->request->post['paylike_mode']))?$this->request->post['paylike_mode']:$this->config->get('paylike_mode');
-		$this->data['error_test_key'] = '';
-		$this->data['error_test_app_key'] = '';
-		$this->data['error_live_key'] = '';
-		$this->data['error_live_app_key'] = '';
-
-		if($paylike_mode == 'test') {
-			if (isset($this->error['test_key'])) {
-				$this->data['error_test_key'] = $this->error['test_key'];
-			} else {
-				$this->data['error_test_key'] = '';
-			}
-
-			if (isset($this->error['test_app_key'])) {
-				$this->data['error_test_app_key'] = $this->error['test_app_key'];
-			} else {
-				$this->data['error_test_app_key'] = '';
-			}
-		}
-
-		if($paylike_mode == 'live') {
-			if (isset($this->error['live_key'])) {
-				$this->data['error_live_key'] = $this->error['live_key'];
-			} else {
-				$this->data['error_live_key'] = '';
-			}
-
-			if (isset($this->error['live_app_key'])) {
-				$this->data['error_live_app_key'] = $this->error['live_app_key'];
-			} else {
-				$this->data['error_live_app_key'] = '';
-			}
-		}
-
-
-		$this->data['breadcrumbs'] = array();
-
-		$this->data['breadcrumbs'][] = array(
-			'text'      => $this->language->get('text_home'),
-			'href'      => $this->url->link('common/home', 'token=' . $this->session->data['token'], 'SSL'),       		
-			'separator' => false
-		);
-
-		$this->data['breadcrumbs'][] = array(
-			'text'      => $this->language->get('text_payment'),
-			'href'      => $this->url->link('extension/payment', 'token=' . $this->session->data['token'], 'SSL'),     		
-			'separator' => ' :: '
-		);
-
-		$this->data['breadcrumbs'][] = array(
-			'text'      => $this->language->get('heading_title'),
-			'href'      => $this->url->link('payment/paylike', 'token=' . $this->session->data['token'], 'SSL'),
-			'separator' => ' :: '
-		);
-
-		/*$this->data['action'] = $this->url->link('payment/paylike', 'token=' . $this->session->data['token'], true);
-		$this->data['cancel'] = $this->url->link('extension/payment', 'token=' . $this->session->data['token'], true);*/
-		$this->data['action'] = $this->url->link('payment/paylike', 'token=' . $this->session->data['token'], 'SSL');
-		$this->data['cancel'] = $this->url->link('extension/payment', 'token=' . $this->session->data['token'], 'SSL');
-
-		//Admin Settings form fields
-
-		//Payment Method Title
-		if (isset($this->request->post['paylike_payment_method_title'])) {
-			$this->data['paylike_payment_method_title'] = $this->request->post['paylike_payment_method_title'];
-		} else {
-			$this->data['paylike_payment_method_title'] = $this->config->get('paylike_payment_method_title');
-		}
-
-		//Payment Method Description
-		if (isset($this->request->post['paylike_payment_method_description'])) {
-			$this->data['paylike_payment_method_description'] = $this->request->post['paylike_payment_method_description'];
-		} else {
-			$this->data['paylike_payment_method_description'] = $this->config->get('paylike_payment_method_description');
-		}
-
-		//Title
-		if (isset($this->request->post['paylike_title'])) {
-			$this->data['paylike_title'] = $this->request->post['paylike_title'];
-		} else {
-			$this->data['paylike_title'] = $this->config->get('paylike_title');
-		}
-
-		//Description Status
-		if (isset($this->request->post['paylike_description_status'])) {
-			$this->data['paylike_description_status'] = $this->request->post['paylike_description_status'];
-		} else {
-			$this->data['paylike_description_status'] = $this->config->get('paylike_description_status');
-		}
-
-		//Description
-		if (isset($this->request->post['paylike_description'])) {
-			$this->data['paylike_description'] = trim($this->request->post['paylike_description']);
-		} else {
-			$this->data['paylike_description'] = $this->config->get('paylike_description');
-		}
-		
-		//Mode(Test/Live)
-		if (isset($this->request->post['paylike_mode'])) {
-			$this->data['paylike_mode'] = $this->request->post['paylike_mode'];
-		} else {
-			$this->data['paylike_mode'] = $this->config->get('paylike_mode');
-		}
-		
-		//Testmode Public Key
-		if (isset($this->request->post['paylike_test_key'])) {
-			$this->data['paylike_test_key'] = $this->request->post['paylike_test_key'];
-		} else {
-			$this->data['paylike_test_key'] = $this->config->get('paylike_test_key');
-		}
-		
-		//Testmode App Key
-		if (isset($this->request->post['paylike_test_app_key'])) {
-			$this->data['paylike_test_app_key'] = $this->request->post['paylike_test_app_key'];
-		} else {
-			$this->data['paylike_test_app_key'] = $this->config->get('paylike_test_app_key');
-		}
-
-		//Livemode Public Key
-		if (isset($this->request->post['paylike_live_key'])) {
-			$this->data['paylike_live_key'] = $this->request->post['paylike_live_key'];
-		} else {
-			$this->data['paylike_live_key'] = $this->config->get('paylike_live_key');
-		}
-		
-		//Livemode App Key
-		if (isset($this->request->post['paylike_live_app_key'])) {
-			$this->data['paylike_live_app_key'] = $this->request->post['paylike_live_app_key'];
-		} else {
-			$this->data['paylike_live_app_key'] = $this->config->get('paylike_live_app_key');
-		}
-		
-		//Total
-		if (isset($this->request->post['paylike_total'])) {
-			$this->data['paylike_total'] = $this->request->post['paylike_total'];
-		} else {
-			$this->data['paylike_total'] = $this->config->get('paylike_total');
-		}
-		
-		//Order Status
-		if (isset($this->request->post['paylike_order_status_id'])) {
-			$this->data['paylike_order_status_id'] = $this->request->post['paylike_order_status_id'];
-		} else {
-			$this->data['paylike_order_status_id'] = $this->config->get('paylike_order_status_id');
-		}
-		$this->load->model('localisation/order_status');
-		$this->data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
-
-		//Capture
-		if (isset($this->request->post['paylike_capture'])) {
-			$this->data['paylike_capture'] = $this->request->post['paylike_capture'];
-		} else {
-			$this->data['paylike_capture'] = $this->config->get('paylike_capture');
-		}
-
-		//Zone
-		if (isset($this->request->post['paylike_geo_zone_id'])) {
-			$this->data['paylike_geo_zone_id'] = $this->request->post['paylike_geo_zone_id'];
-		} else {
-			$this->data['paylike_geo_zone_id'] = $this->config->get('paylike_geo_zone_id');
-		}
-		$this->load->model('localisation/geo_zone');
-		$this->data['geo_zones'] = $this->model_localisation_geo_zone->getGeoZones();
-
-		//Status
-		if (isset($this->request->post['paylike_status'])) {
-			$this->data['paylike_status'] = $this->request->post['paylike_status'];
-		} else {
-			$this->data['paylike_status'] = $this->config->get('paylike_status');
-		}
-
-		//Sort Order
-		if (isset($this->request->post['paylike_sort_order'])) {
-			$this->data['paylike_sort_order'] = $this->request->post['paylike_sort_order'];
-		} else {
-			$this->data['paylike_sort_order'] = $this->config->get('paylike_sort_order');
-		}
-
-		/*$this->data['header'] = $this->load->controller('common/header');
-		$this->data['column_left'] = $this->load->controller('common/column_left');
-		$this->data['footer'] = $this->load->controller('common/footer');
-
-		if( version_compare(VERSION, '2.2.0.0', '>=') ) {
-			$this->response->setOutput($this->load->view('payment/paylike', $data));
-		}else{
-			$this->response->setOutput($this->load->view('payment/paylike.tpl', $data));
-		}*/
-
-		$this->data['token'] = $this->session->data['token'];
-
-		$this->template = 'payment/paylike.tpl';
-		$this->children = array(
-			'common/header',
-			'common/footer'
-		);		
-		$this->response->setOutput($this->render());
-
-	}
-
-	protected function validate() {
-		if (!$this->user->hasPermission('modify', 'payment/paylike')) {
-			$this->error['warning'] = $this->language->get('error_permission');
-		}
-
-		$paylike_mode = (isset($this->request->post['paylike_mode']))?$this->request->post['paylike_mode']:$this->config->get('paylike_mode');
-
-		if($paylike_mode == 'test') {
-			if (!$this->request->post['paylike_test_key']) {
-				$this->error['test_key'] = $this->language->get('error_test_key');
-			}
-
-			if (!$this->request->post['paylike_test_app_key']) {
-				$this->error['test_app_key'] = $this->language->get('error_test_app_key');
-			}
-		}
-
-		if($paylike_mode == 'live') {
-			if (!$this->request->post['paylike_live_key']) {
-				$this->error['live_key'] = $this->language->get('error_live_key');
-			}
-
-			if (!$this->request->post['paylike_live_app_key']) {
-				$this->error['live_app_key'] = $this->language->get('error_live_app_key');
-			}
-		}
-
-		return !$this->error;
-	}
-
-	public function doaction(){
-		$response = array();
-
-		if ( isset($this->request->post['trans_ref'])
-			&& !empty($this->request->post['trans_ref'])
-			&& isset($this->request->post['p_action'])
-			&& !empty($this->request->post['p_action'])
-			//&& isset($this->request->post['p_amount'])
-			//&& !empty($this->request->post['p_amount']) 
-		) {
-				//Set app key
-				$app_key = ($this->config->get('paylike_mode') === 'test')?$this->config->get('paylike_test_app_key'):$this->config->get('paylike_live_app_key');
-				Paylike\Client::setKey( $app_key );
-
-				$this->logger = new Log('paylike.log');
-       			$this->logger->write('Paylike Class Initialized in Admin');
-
-       			$this->load->language('payment/paylike');
-
-       			$orderId = $this->request->post['p_order_id'];
-       			$transactionId = $this->request->post['trans_ref'];
-       			$action = $this->request->post['p_action'];
-				if(isset($this->request->post['p_amount']) && !empty($this->request->post['p_amount']))
-					$amount = $this->get_paylike_amount($this->request->post['p_amount']);
-				else
-					$amount = 0;
-       			$reason = $this->request->post['p_reason'];
-       			$captured = $this->request->post['p_captured'];
-
-       			switch ( $action ) {
-   					case "capture":
-   						if ( 'YES' == $captured ) {
-	   						$response['transaction']['errors'] = $this->language->get('error_order_already_captured');
-			            	$response['transaction']['error'] = 1;
-		            	} else {
-		            		$this->logger->write('Paylike Capture Action Initialized in Admin for Amount: ' . $amount);
-				            $data = array(
-				                'amount'   => $amount,
-				                'descriptor' => "Order #{$orderId}",
-				                'currency' => $this->session->data['currency']
-				            );
-							$trans_data = Paylike\Transaction::fetch( $transactionId );
-							$data['amount'] = (int) $trans_data['transaction']['pendingAmount'];
-				            $response = Paylike\Transaction::capture( $transactionId, $data );			
-				            if (isset($response['transaction'])) {
-				            	$this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '5' WHERE `order_id` = '{$orderId}'");
-				            	$this->db->query("UPDATE " . DB_PREFIX . "paylike_admin SET captured = 'YES' WHERE `order_id` = '{$orderId}'");
-				            	$response['order_status_id'] = 5;
-				            	$response['success_message'] = $this->language->get('order_captured_success');
-				            }
-				            else {
-				            	$response['transaction']['errors'] = $this->get_response_error($response);
-				            	$response['transaction']['error'] = 1;
-				            }
-		            	}
-			            break;
-		            case "refund":
-		            	$this->logger->write('Paylike Refund Action Initialized in Admin for Amount: ' . $amount);
-		            	$data['amount'] = $amount;
-			            if ( $reason ) {
-			                $data['descriptor'] = $reason;
-			            }
-			            if ( 'YES' == $captured ) {
-				            $response = Paylike\Transaction::refund( $transactionId, $data );
-				            if (isset($response['transaction'])) {
-				            	$this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '11' WHERE `order_id` = '{$orderId}'");
-								$response['order_status_id'] = 11;
-								$response['success_message'] = sprintf($this->language->get('order_refunded_success'), $this->session->data['currency'].' '.number_format(($amount/100), 2, '.', ''));
-				            }
-							else {
-								$response['transaction']['errors'] = $this->get_response_error($response);
-								$response['transaction']['error'] = 1;
-							}
-				        } else {
-				            $response['transaction']['errors'] = $this->language->get('refund_before_capture_error');
-							$response['transaction']['error'] = 1;
-				        }
-			            break;
-		            case "void":
-						if ( 'YES' == $captured ) {
-				            $response['transaction']['errors'] = $this->language->get('void_after_capture_error');
-							$response['transaction']['error'] = 1;
-				        } else {
-							$this->logger->write('Paylike Void Action Initialized in Admin for Amount: ' . $amount);
-							$trans_data = Paylike\Transaction::fetch( $transactionId );
-							$data['amount'] = (int) $trans_data['transaction']['amount'] - $trans_data['transaction']['refundedAmount'];
-							
-							$response = Paylike\Transaction::void( $transactionId, $data );
-				            if (isset($response['transaction'])) {
-				            	$this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '16' WHERE `order_id` = '{$orderId}'");
-				            	$response['order_status_id'] = 16;
-								$response['success_message'] = $this->language->get('order_voided_success');
-				            }							
-							
-							if (!isset($response['transaction'])) {
-								$response['transaction']['errors'] = $this->get_response_error($response);
-								$response['transaction']['error'] = 1;
-							}
-				        }
-						
-						/*$data['amount'] = $amount;
-			            if ( $reason ) {
-			                $data['descriptor'] = $reason;
-			            }
-			            if ( 'YES' == $captured ) {
-				            $response = Paylike\Transaction::refund( $transactionId, $data );
-				            if (isset($response['transaction'])) {
-				            	$this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '16' WHERE `order_id` = '{$orderId}'");
-				            	$response['order_status_id'] = 16;
-				            	$response['success_message'] = $this->language->get('order_voided_success');
-				            }
-				        } else {
-				            $response = Paylike\Transaction::void( $transactionId, $data );
-				            if (isset($response['transaction'])) {
-				            	$this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '16' WHERE `order_id` = '{$orderId}'");
-				            	$response['order_status_id'] = 16;
-				            }
-				        }*/
-			            break;
-   				}
-		}
-
-		$this->response->addHeader('Content-Type: application/json');
-		$this->response->setOutput(json_encode($response));
-	}
-	
 	/**
-     * Gets errors from a failed api request
+     * Should we capture Credit cards
      *
-     * @param $result
-     *
-     * @return string
+     * @var bool
      */
-    protected function get_response_error( $result ) {
-        $error = array();
-        foreach ( $result as $field_error ) {
-            $error[] = ucwords($field_error['field']) . ': ' . $field_error['message'];
-        }
-        $error_message = implode( " ", $error );
-
-        return $error_message;
-    }
+    public $capture;
 
     /**
+     * Show payment popup on the checkout action.
+     *
+     * @var bool
+     */
+    public $direct_checkout;
+
+    /**
+     * API access app key
+     *
+     * @var string
+     */
+    public $app_key;
+
+    /**
+     * Api access public key
+     *
+     * @var string
+     */
+    public $public_key;
+
+    /**
+     * Is test mode active?
+     *
+     * @var bool
+     */
+    public $testmode;
+
+    /**
+     * Logging enabled?
+     *
+     * @var bool
+     */
+    public $logging;
+
+    public $logger;
+	
+    public function index() {
+		header('Access-Control-Allow-Origin: *');
+		$this->load->language('payment/paylike');
+
+		$this->data['button_confirm'] = $this->language->get('button_confirm');
+
+		$this->load->model('checkout/order');
+
+		$order_info = $this->model_checkout_order->getOrder($this->session->data['order_id']);
+
+		$products = $this->cart->getProducts();
+		$products_array = array();
+		$products_label = array();
+		$p = 0;
+		foreach ($products as $key => $product) {
+			$products_array[$p] = array(
+					'ID' => $product['product_id'],
+					'name' => $product['name'],
+					'quantity' => $product['quantity']
+				);
+			$products_label[$p] = $product['quantity'].'x '.$product['name'];
+			$p++;
+		}
+		$this->data['products'] = json_encode($products_array);
+
+		$this->data['paylike_public_key'] = ($this->config->get('paylike_mode') == 'test')?$this->config->get('paylike_test_key'):$this->config->get('paylike_live_key');
+        $this->data['popup_title'] = (!empty($this->config->get('paylike_title')))?$this->config->get('paylike_title'):$this->config->get('config_title');
+        if($this->config->get('paylike_description_status') == 1){
+            $this->data['popup_description'] = ($this->config->get('paylike_description'))?$this->config->get('paylike_description'):'';
+        } else {
+            $this->data['popup_description'] = implode(", & ", $products_label);
+        }
+		$this->data['order_id'] = $this->session->data['order_id'];
+		$this->data['name'] = $order_info['payment_firstname']." ".$order_info['payment_lastname'];
+		$this->data['email'] = $order_info['email'];
+		$this->data['telephone'] = $order_info['telephone'];
+		$this->data['address'] = $order_info['payment_address_1'].', '.$order_info['payment_address_2'].', '.$order_info['payment_city'].', '.$order_info['payment_zone'].', '.$order_info['payment_country'].' - '.$order_info['payment_postcode'];
+		$this->data['ip'] = $order_info['ip'];
+		$this->data['amount'] = $this->get_paylike_amount($order_info['total'], $order_info['currency_code']);
+		$this->data['currency_code'] = $this->session->data['currency'];
+
+		if( version_compare(VERSION, '1.5.6.5', '>=') ) {
+			$this->template ='payment/paylike';
+		} else {
+			$this->template = 'default/template/payment/paylike.tpl';
+		}
+        $this->children = array(
+            'common/header',
+            'common/footer'
+        );      
+        $this->response->setOutput($this->render());
+		
+	}
+
+	public function update() {
+		$this->load->language('payment/paylike');
+		
+		if(isset($_POST['trans_ref']) && $_POST['trans_ref'] != ''){
+			$message = "";
+			$this->load->model('checkout/order');
+			$order_info = $this->model_checkout_order->getOrder($this->session->data['order_id']);
+			$message .= $_POST['trans_ref'];
+			$this->model_checkout_order->addOrderHistory($this->session->data['order_id'], $this->config->get('config_order_status_id'), $message);
+
+			$amount = round($this->currency->format($order_info['total'], $order_info['currency_code'], 1.00000, false));
+			$pat_order_query = $this->db->query("SELECT order_id from " . DB_PREFIX . "paylike_admin where order_id = '" . $order_info['order_id'] . "'");
+			if (!$pat_order_query->num_rows) {
+				$this->db->query("INSERT INTO " . DB_PREFIX . "paylike_admin SET `order_id` = '" . $order_info['order_id'] . "', trans_id = '" .$_POST['trans_ref'] . "', amount = " .$amount . "");
+			} else {
+				$this->db->query("UPDATE " . DB_PREFIX . "paylike_admin SET trans_id = '" . $_POST['trans_ref'] . "', amount = '" . $amount . "' WHERE `order_id` = '" . $order_info['order_id'] . "'");
+			}
+
+			$json['success'] = $this->language->get('text_order_updated');
+			$json['redirect'] = $this->url->link('checkout/success', '', true);
+		} else {
+			$json['error'] = $this->language->get('text_no_transaction_found');
+		}
+		
+
+		$this->response->addHeader('Content-Type: application/json');
+		$this->response->setOutput(json_encode($json));
+	}
+
+	/**
      * Get Paylike amount to pay
      *
      * @param float $total Amount due.
@@ -508,4 +154,224 @@ class ControllerPaymentPaylike extends Controller {
 
         return ceil($total);
     }
+
+	/**
+     * Process the payment
+     *
+     * @param int $order_id Reference.
+     *
+     * @return array
+     */
+    public function process_payment() {
+    	$this->title              	= $this->config->get('paylike_title');
+        $this->description        	= $this->config->get('paylike_description');
+        $this->enabled            	= $this->config->get('paylike_status');
+        $this->testmode           	= 'test' === $this->config->get('paylike_mode');
+        $this->capture            	= '1' === $this->config->get('paylike_capture');
+        $this->app_key         		= ($this->testmode)?$this->config->get('paylike_test_app_key'):$this->config->get('paylike_live_app_key');
+        $this->public_key         	= ($this->testmode)?$this->config->get('paylike_test_public_key'):$this->config->get('paylike_live_public_key');
+        $this->logging            	= 'yes' === 'yes';
+
+        if ( $this->app_key != '' ) {
+            Paylike\Client::setKey( $this->app_key );
+        }
+
+        $this->logger = new Log('paylike.log');
+        $this->logger->write('Paylike Class Initialized');
+        $this->load->language('payment/paylike');
+
+        $json = array();
+
+    	if(isset($_POST['trans_ref']) && $_POST['trans_ref'] != ''){
+    		$this->load->model('checkout/order');
+			$order_info = $this->model_checkout_order->getOrder($this->session->data['order_id']);
+			/*$this->model_checkout_order->addOrderHistory($this->session->data['order_id'], $this->config->get('config_order_status_id'), $_POST['trans_ref']);*/
+            $this->model_checkout_order->confirm($this->session->data['order_id'], $this->config->get('config_order_status_id'));
+
+			$transaction_id = $_POST['trans_ref'];
+            if($this->handle_payment($transaction_id, $order_info)) {
+                $this->model_checkout_order->update($this->session->data['order_id'], $this->config->get('paylike_order_status_id'), $_POST['trans_ref'], false);
+
+                //$json['success'] = $this->url->link('checkout/success');
+                $json['success'] = $this->language->get('text_order_updated');
+                $json['redirect'] = $this->url->link('checkout/success', '', true);
+            }
+		}
+		else {
+			$json['error'] = $this->language->get('text_no_transaction_found');
+		}
+
+		$this->response->addHeader('Content-Type: application/json');
+		$this->response->setOutput(json_encode($json));
+    }
+
+    /**
+     * Handles API interaction for the order
+     * by either only authorizing the payment
+     * or making the capture directly
+     *
+     * @param $transaction_id
+     * @param $order
+     * @param $amount
+     *
+     * @return bool|int|mixed
+     */
+    protected function handle_payment( $transaction_id, $order, $amount = false ) {
+    	$amount = round($this->currency->format($order['total'], $order['currency_code'], 1.00000, false)).'00';
+        $this->logger->write( "Info: Begin processing payment for order ".$order['order_id']." for the amount of {$amount}" );
+        $amount = false;
+        if ( false == $this->capture ) {
+            $result = Paylike\Transaction::fetch( $transaction_id );
+            $this->handle_authorize_result( $result, $order, $amount );
+        } else {
+            $data   = array(
+                'amount'   => $this->get_paylike_amount( $order['total'], $order['currency_code'] ),
+                'currency' => $order['currency_code']
+            );
+            $result = Paylike\Transaction::capture( $transaction_id, $data );
+            $this->handle_capture_result( $result, $order, $amount );
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param $order
+     * @param $result // array result returned by the api wrapper
+     * @param int $amount
+     */
+    function handle_authorize_result( $result, $order, $amount = 0 ) {
+        $result = $this->parse_api_transaction_response( $result, $order, $amount );
+        if ( $result ) {
+            $orderId = $order['order_id'];
+            $status = $this->config->get('paylike_order_status_id');
+            $this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '{$status}' WHERE `order_id` = '{$orderId}'");
+            $this->get_transaction_authorization_details( $result );
+            $this->save_transaction( $result['transaction']['id'], $order );
+        }
+    }
+
+    /**
+     * @param $order
+     * @param $result // array result returned by the api wrapper
+     * @param int $amount
+     */
+    function handle_capture_result( $result, $order, $amount = 0 ) {
+        $result = $this->parse_api_transaction_response( $result, $order, $amount );
+        if ( !$result ) {
+            $this->logger->write( 'Unable to capture transaction!' );
+        } else {
+            $orderId = $order['order_id'];
+            $status = $this->config->get('paylike_order_status_id');
+            $this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '{$status}' WHERE `order_id` = '{$orderId}'");
+            $this->get_transaction_capture_details( $result );
+            $this->save_transaction( $result['transaction']['id'], $order, 'YES' );
+        }
+    }
+
+    /**
+     * Parses api transaction response to for errors
+     *
+     * @param $result
+     * @param $order
+     * @param bool $amount
+     *
+     * @return null
+     */
+    protected function parse_api_transaction_response( $result, $order = null, $amount = false ) {
+        if ( ! $result ) {
+        	$this->logger->write( "paylike_error: cURL request failed." );
+        }
+        if ( ! $this->is_transaction_successful( $result, $order, $amount ) ) {
+            $error_message = $this->get_response_error( $result );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Gets errors from a failed api request
+     *
+     * @param $result
+     *
+     * @return string
+     */
+    protected function get_response_error( $result ) {
+        $error = array();
+        foreach ( $result as $field_error ) {
+            $error[] = @$field_error['field'] . ':' . @$field_error['message'];
+        }
+        $error_message = implode( " ", $error );
+
+        return $error_message;
+    }
+
+    /**
+     * Checks if the transaction was successful and
+     * the data was not tempered with
+     *
+     *
+     * @param $result
+     * @param $order
+     * @param bool|false $amount used to overwrite the amount, when we don't pay the full order
+     *
+     * @return bool
+     */
+    protected function is_transaction_successful( $result, $order = null, $amount = false ) {
+        // if we don't have the order, we only check the successful status
+        if ( ! $order ) {
+            return 1 == $result['transaction']['successful'];
+        }
+        // we need to overwrite the amount in the case of a subscription
+        if ( ! $amount ) {
+            $amount = $this->get_paylike_amount( $order['total'], $order['currency_code'] );
+        }
+
+        return 1 == $result['transaction']['successful']
+                && $result['transaction']['currency'] == $order['currency_code'];
+                //&& (int) $result['transaction']['amount'] == (int) $amount;
+    }
+
+    /**
+     * @param $result
+     *
+     * @return string
+     */
+    protected function get_transaction_authorization_details( $result ) {
+    	$this->logger->write( "paylike_authorization: Paylike authorization completed at " . $result['transaction']['created'] . " for Transaction ID " . $result['transaction']['id'] );
+
+        return 'Paylike authorization complete.' . PHP_EOL .
+               'Transaction ID: ' . $result['transaction']['id'] . PHP_EOL .
+               'Payment Amount: ' . $result['transaction']['amount'] . PHP_EOL .
+               'Transaction authorized at: ' . $result['transaction']['created'];
+    }
+
+    /**
+     * @param $result
+     *
+     * @return string
+     */
+    protected function get_transaction_capture_details( $result ) {
+    	$this->logger->write( "paylike_captured: Captured amount: " . $result['transaction']['capturedAmount'] . " at " . $result['transaction']['created'] . " Created for Transaction ID " . $result['transaction']['id'] );
+
+        return 'Transaction ID: ' . $result['transaction']['id'] . PHP_EOL .
+               'Authorized amount: ' . $result['transaction']['amount'] . PHP_EOL .
+               'Captured amount: ' . $result['transaction']['capturedAmount'] . PHP_EOL .
+               'Charge authorized at: ' . $result['transaction']['created'];
+    }
+
+    /**
+     * @param $transaction_id
+     * @param $order
+     */
+    protected function save_transaction( $transaction_id, $order, $captured = 'NO' ) {
+    	$amount = $this->get_paylike_amount($order['total'], $order['currency_code']);
+        $pat_order_query = $this->db->query("SELECT order_id from " . DB_PREFIX . "paylike_admin where order_id = '" . $order['order_id'] . "'");
+		if (!$pat_order_query->num_rows) {
+			$this->db->query("INSERT INTO " . DB_PREFIX . "paylike_admin SET `order_id` = '" . $order['order_id'] . "', trans_id = '" .$transaction_id . "', amount = " .$amount . ", captured = '" . $captured . "'");
+		} else {
+			$this->db->query("UPDATE " . DB_PREFIX . "paylike_admin SET trans_id = '" . $transaction_id . "', amount = '" . $amount . "' WHERE `order_id` = '" . $order['order_id'] . "' AND captured = '" . $captured . "'");
+		}
+    }
+
 }
