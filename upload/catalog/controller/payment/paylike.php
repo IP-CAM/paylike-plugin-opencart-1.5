@@ -88,16 +88,7 @@ class ControllerPaymentPaylike extends Controller
         $this->data['telephone'] = $order_info['telephone'];
         $this->data['address'] = $order_info['payment_address_1'] . ', ' . $order_info['payment_address_2'] . ', ' . $order_info['payment_city'] . ', ' . $order_info['payment_zone'] . ', ' . $order_info['payment_country'] . ' - ' . $order_info['payment_postcode'];
         $this->data['ip'] = $order_info['ip'];
-        //$this->data['amount'] = $this->get_paylike_amount($order_info['total'], $order_info['currency_code']);
-        $this->data['amount'] = $this->currency->format($order_info['total']);
-        $this->load->model('localisation/currency');
-        $results = $this->model_localisation_currency->getCurrencies();
-        $currencies = array();
-        foreach ($results as $result) {
-            $currencies[] = (isset($result['symbol_left']) && !empty($result['symbol_left'])) ? $result['symbol_left'] : ((isset($result['symbol_right']) && !empty($result['symbol_right'])) ? $result['symbol_right'] : '');
-        }
-        $this->data['amount'] = str_replace($currencies, '', $this->data['amount']);
-        $this->data['amount'] = (float)$this->data['amount'] * 100;
+        $this->data['amount'] = $this->get_paylike_amount($order_info['total'], $order_info['currency_code']);
         $this->data['currency_code'] = $this->session->data['currency'];
 
         if (version_compare(VERSION, '1.5.6.5', '>=')) {
@@ -111,6 +102,41 @@ class ControllerPaymentPaylike extends Controller
         );
         $this->response->setOutput($this->render());
 
+    }
+
+    /**
+     * Get Paylike amount to pay
+     *
+     * @param float $total Amount due.
+     * @param string $currency Accepted currency.
+     *
+     * @return float|int
+     */
+    public function get_paylike_amount($total, $currency = '')
+    {
+        /*$zero_decimal_currency = array(
+            "CLP",
+            "JPY",
+            "VND"
+        );
+        $currency_code         = $currency != '' ? $currency : $this->session->data['currency'];
+        if ( in_array( $currency_code, $zero_decimal_currency ) ) {
+            $total = number_format( $total, 0, ".", "" );
+        } else {
+            $total = $total * 100;
+        }*/
+
+        $total = $this->currency->format($total);
+        $this->load->model('localisation/currency');
+        $results = $this->model_localisation_currency->getCurrencies();
+        $currencies = array();
+        foreach ($results as $currency) {
+            $currencies[] = (isset($currency['symbol_left']) && !empty($currency['symbol_left'])) ? $currency['symbol_left'] : ((isset($currency['symbol_right']) && !empty($currency['symbol_right'])) ? $currency['symbol_right'] : '');
+        }
+        $total = str_replace($currencies, '', $total);
+        $total = number_format(str_replace(',', '', $total), 2, ".", "") * 100;
+
+        return ceil($total);
     }
 
     public function update()
@@ -287,31 +313,6 @@ class ControllerPaymentPaylike extends Controller
         return 1 == $result['transaction']['successful']
             && $result['transaction']['currency'] == $order['currency_code'];
         //&& (int) $result['transaction']['amount'] == (int) $amount;
-    }
-
-    /**
-     * Get Paylike amount to pay
-     *
-     * @param float $total Amount due.
-     * @param string $currency Accepted currency.
-     *
-     * @return float|int
-     */
-    public function get_paylike_amount($total, $currency = '')
-    {
-        $zero_decimal_currency = array(
-            "CLP",
-            "JPY",
-            "VND"
-        );
-        $currency_code = $currency != '' ? $currency : $this->session->data['currency'];
-        if (in_array($currency_code, $zero_decimal_currency)) {
-            $total = number_format($total, 0, ".", "");
-        } else {
-            $total = $total * 100;
-        }
-
-        return ceil($total);
     }
 
     /**
