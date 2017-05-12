@@ -86,7 +86,16 @@ class ControllerPaymentPaylike extends Controller {
 		$this->data['telephone'] = $order_info['telephone'];
 		$this->data['address'] = $order_info['payment_address_1'].', '.$order_info['payment_address_2'].', '.$order_info['payment_city'].', '.$order_info['payment_zone'].', '.$order_info['payment_country'].' - '.$order_info['payment_postcode'];
 		$this->data['ip'] = $order_info['ip'];
-		$this->data['amount'] = $this->get_paylike_amount($order_info['total'], $order_info['currency_code']);
+		//$this->data['amount'] = $this->get_paylike_amount($order_info['total'], $order_info['currency_code']);
+        $this->data['amount'] = $this->currency->format($order_info['total']);
+        $this->load->model('localisation/currency');
+        $results = $this->model_localisation_currency->getCurrencies();
+        $currencies = array();
+        foreach ($results as $result) {
+            $currencies[] = (isset($result['symbol_left']) && !empty($result['symbol_left']))?$result['symbol_left']:((isset($result['symbol_right']) && !empty($result['symbol_right']))?$result['symbol_right']:'');
+        }
+        $this->data['amount'] = str_replace($currencies, '', $this->data['amount']);
+        $this->data['amount'] = (float)$this->data['amount'] * 100;
 		$this->data['currency_code'] = $this->session->data['currency'];
 
 		if( version_compare(VERSION, '1.5.6.5', '>=') ) {
