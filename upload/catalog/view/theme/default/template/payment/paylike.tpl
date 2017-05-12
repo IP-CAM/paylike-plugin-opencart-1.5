@@ -31,12 +31,12 @@ $('body').on('click', '#button-confirm', function() {
             email: '<?php echo $email; ?>',
             telephone: '<?php echo $telephone; ?>',
             address: '<?php echo $address; ?>',
-            customerIp: '<?php echo $ip; ?>',
-            locale: '<?php echo $this->language->get("code"); ?>',
-            platform_version: '<?php echo VERSION; ?>',
-            ecommerce: 'opencart',
-            version: '1.0.1'
+            customerIp: '<?php echo $ip; ?>'
         },
+        locale: '<?php echo $this->language->get("code"); ?>',
+        platform_version: '<?php echo VERSION; ?>',
+        ecommerce: 'opencart',
+        version: '1.0.1',
         fields: [],
     }, function(err, res) {
         if (err)
