@@ -134,9 +134,10 @@ class ControllerPaymentPaylike extends Controller
             $currencies[] = (isset($currency['symbol_left']) && !empty($currency['symbol_left'])) ? $currency['symbol_left'] : ((isset($currency['symbol_right']) && !empty($currency['symbol_right'])) ? $currency['symbol_right'] : '');
         }
         $total = str_replace($currencies, '', $total);
-        $total = number_format(str_replace(',', '', $total), 2, ".", "") * 100;
-
-        return ceil($total);
+        $total = str_replace($this->language->get('decimal_point'), '.', $total);
+        $total = str_replace($this->language->get('thousand_point'), '', $total);
+        $total = number_format($total, 2, '.', '') * 100;
+        return $total;
     }
 
     public function update()
@@ -202,14 +203,25 @@ class ControllerPaymentPaylike extends Controller
             $order_info = $this->model_checkout_order->getOrder($this->session->data['order_id']);
             /*$this->model_checkout_order->addOrderHistory($this->session->data['order_id'], $this->config->get('config_order_status_id'), $_POST['trans_ref']);*/
             $this->model_checkout_order->confirm($this->session->data['order_id'], $this->config->get('config_order_status_id'));
-
             $transaction_id = $_POST['trans_ref'];
-            if ($this->handle_payment($transaction_id, $order_info)) {
+
+            $result = $this->handle_payment($transaction_id, $order_info);
+            if (!empty($result) && isset($result['transaction'])) {
                 $this->model_checkout_order->update($this->session->data['order_id'], $this->config->get('paylike_order_status_id'), $_POST['trans_ref'], false);
 
                 //$json['success'] = $this->url->link('checkout/success');
                 $json['success'] = $this->language->get('text_order_updated');
                 $json['redirect'] = $this->url->link('checkout/success', '', true);
+            } else {
+                $message = $this->language->get('text_invalid_transaction');
+                if (is_array($result) && !empty($result['error']) && $result['error'] == 1) {
+                    $message = $result['message'];
+
+                } else if (!empty($result[0]['message'])) {
+                    $message = $result[0]['message'];
+                }
+                $json['error'] = $message;
+                //$json['redirect'] = $this->url->link('checkout/checkout', '', true);
             }
         } else {
             $json['error'] = $this->language->get('text_no_transaction_found');
@@ -237,17 +249,17 @@ class ControllerPaymentPaylike extends Controller
         $amount = false;
         if (false == $this->capture) {
             $result = Paylike\Transaction::fetch($transaction_id);
-            $this->handle_authorize_result($result, $order, $amount);
+            $response = $this->handle_authorize_result($result, $order, $amount);
         } else {
             $data = array(
                 'amount' => $this->get_paylike_amount($order['total'], $order['currency_code']),
                 'currency' => $order['currency_code']
             );
             $result = Paylike\Transaction::capture($transaction_id, $data);
-            $this->handle_capture_result($result, $order, $amount);
+            $response = $this->handle_capture_result($result, $order, $amount);
         }
 
-        return $result;
+        return $response;
     }
 
     /**
@@ -258,13 +270,18 @@ class ControllerPaymentPaylike extends Controller
     function handle_authorize_result($result, $order, $amount = 0)
     {
         $result = $this->parse_api_transaction_response($result, $order, $amount);
-        if ($result) {
+        if (empty($result)) {
+            $this->logger->write('Unable to capture transaction!');
+            $response = $result;
+        } else {
             $orderId = $order['order_id'];
             $status = $this->config->get('paylike_order_status_id');
             $this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '{$status}' WHERE `order_id` = '{$orderId}'");
             $this->get_transaction_authorization_details($result);
             $this->save_transaction($result['transaction']['id'], $order);
+            $response = $result;
         }
+        return $response;
     }
 
     /**
@@ -280,9 +297,12 @@ class ControllerPaymentPaylike extends Controller
     {
         if (!$result) {
             $this->logger->write("paylike_error: cURL request failed.");
+            $result = null;
         }
+
         if (!$this->is_transaction_successful($result, $order, $amount)) {
             $error_message = $this->get_response_error($result);
+            $result = null;
         }
 
         return $result;
@@ -310,9 +330,13 @@ class ControllerPaymentPaylike extends Controller
             $amount = $this->get_paylike_amount($order['total'], $order['currency_code']);
         }
 
-        return 1 == $result['transaction']['successful']
-            && $result['transaction']['currency'] == $order['currency_code'];
-        //&& (int) $result['transaction']['amount'] == (int) $amount;
+        if (isset($result['transaction'])) {
+            return 1 == $result['transaction']['successful']
+                && $result['transaction']['currency'] == $order['currency_code']
+                && (int)$result['transaction']['amount'] == (int)$amount;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -326,7 +350,8 @@ class ControllerPaymentPaylike extends Controller
     {
         $error = array();
         foreach ($result as $field_error) {
-            $error[] = @$field_error['field'] . ':' . @$field_error['message'];
+            if (isset($field_error['field']))
+                $error[] = @$field_error['field'] . ':' . @$field_error['message'];
         }
         $error_message = implode(" ", $error);
 
@@ -371,15 +396,20 @@ class ControllerPaymentPaylike extends Controller
     function handle_capture_result($result, $order, $amount = 0)
     {
         $result = $this->parse_api_transaction_response($result, $order, $amount);
-        if (!$result) {
+
+        if (!isset($result['transaction'])) {
             $this->logger->write('Unable to capture transaction!');
+            $response = $result;
+
         } else {
             $orderId = $order['order_id'];
             $status = $this->config->get('paylike_order_status_id');
             $this->db->query("UPDATE " . DB_PREFIX . "order SET order_status_id = '{$status}' WHERE `order_id` = '{$orderId}'");
             $this->get_transaction_capture_details($result);
             $this->save_transaction($result['transaction']['id'], $order, 'YES');
+            $response = $result;
         }
+        return $response;
     }
 
     /**
