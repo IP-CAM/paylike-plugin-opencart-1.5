@@ -487,6 +487,8 @@ class ControllerPaymentPaylike extends Controller
             "VND"
         );
         $currency_code = $currency != '' ? $currency : $this->session->data['currency'];
+
+        $total = str_replace(' ', '', $total);
         if (in_array($currency_code, $zero_decimal_currency)) {
             $total = number_format($total, 0, ".", "");
         } else {

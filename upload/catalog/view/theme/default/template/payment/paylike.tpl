@@ -42,8 +42,8 @@ $('body').on('click', '#button-confirm', function() {
         if (err)
             return console.log(err);
 
-        console.log(res);
-        console.log('++++++++++++++++++++++++++++');
+        //console.log(res);
+        //console.log('++++++++++++++++++++++++++++');
         var name_parts = res.custom.name.split(' ');
 
         $.ajax({
@@ -62,7 +62,14 @@ $('body').on('click', '#button-confirm', function() {
             },
             success: function(json) {
                 console.log(json);
-                location.href = json.redirect;
+                if( json.hasOwnProperty('error') ) {
+                    var html = '<div class="warning">Warning: ' + json.error + '</div>';
+                    $('div#confirm .checkout-content').prepend(html);
+                }
+
+                if( json.hasOwnProperty('redirect') ) {
+                    location.href = json.redirect;
+                }
             }
         });
     });
