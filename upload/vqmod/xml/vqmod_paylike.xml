@@ -269,4 +269,21 @@
         </operation>
     </file>
 
+
+    <file name="system/library/currency.php">
+        <operation>
+            <search position="before"><![CDATA[
+                public function format($number, $currency = '', $value = '', $format = true) {
+            ]]></search>
+            <add><![CDATA[
+  	public function getPayLikeAmount($number, $currency = '') {
+	  	require_once(DIR_SYSTEM . 'library/Paylike/Currencies.php');
+	  	$multiplier = getPaylikeCurrencyMultiplier($currency);
+			  	
+		   return ceil($number*$multiplier);
+  	}
+            ]]></add>
+        </operation>
+    </file>
+
 </modification>

@@ -14,7 +14,7 @@
 
 <script type="text/javascript" src="https://sdk.paylike.io/3.js"></script>
 <script type="text/javascript"><!--
-    
+
 $('body').on('click', '#button-confirm', function() {
     var paylike = Paylike('<?php echo $paylike_public_key; ?>');
     paylike.popup({
@@ -24,30 +24,32 @@ $('body').on('click', '#button-confirm', function() {
         amount: <?php echo $amount; ?>,
         custom: {
             orderId: '<?php echo $order_id; ?>',
-            products: [
-                <?php echo $products; ?>
-            ],
-            name: '<?php echo $name; ?>',
-            email: '<?php echo $email; ?>',
-            telephone: '<?php echo $telephone; ?>',
-            address: '<?php echo $address; ?>',
-            customerIp: '<?php echo $ip; ?>'
+            products:  <?php echo $products; ?>,
+            customer:{
+                name: '<?php echo $name; ?>',
+                email: '<?php echo $email; ?>',
+                telephone: '<?php echo $telephone; ?>',
+                address: '<?php echo $address; ?>',
+                customerIp: '<?php echo $ip; ?>'
+            },
+            platform:{
+                name: 'opencart',
+                version: '<?php echo VERSION; ?>',
+            },
+            ecommerce: {
+                name: 'opencart',
+                version: '<?php echo VERSION; ?>',
+            },
+            version: '1.0.2'
         },
-        locale: '<?php echo $this->language->get("code"); ?>',
-        platform_version: '<?php echo VERSION; ?>',
-        ecommerce: 'opencart',
-        version: '1.0.1',
-        fields: [],
+        locale: '<?php echo $this->language->get("code"); ?>'
+
     }, function(err, res) {
         if (err)
             return console.log(err);
 
-        //console.log(res);
-        //console.log('++++++++++++++++++++++++++++');
-        var name_parts = res.custom.name.split(' ');
-
         $.ajax({
-            url: 'index.php?route=payment/paylike/process_payment',
+            url: 'index.php?route=payment/paylike/processPayment',
             type: 'post',
             data: {
                 'trans_ref': res.transaction.id
