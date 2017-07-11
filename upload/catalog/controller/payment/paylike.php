@@ -86,7 +86,7 @@ class ControllerPaymentPaylike extends Controller {
         $this->data['telephone'] = $order_info['telephone'];
         $this->data['address'] = $order_info['payment_address_1'] . ', ' . $order_info['payment_address_2'] . ', ' . $order_info['payment_city'] . ', ' . $order_info['payment_zone'] . ', ' . $order_info['payment_country'] . ' - ' . $order_info['payment_postcode'];
         $this->data['ip'] = $order_info['ip'];
-        $this->data['amount'] = $this->currency->getPayLikeAmount($order_info['total'], $order_info['currency_code']);       
+        $this->data['amount'] = $this->currency->getPayLikeAmount($order_info['total'], $order_info['currency_code']);
         $this->data['currency_code'] = $this->session->data['currency'];      
 
         if (version_compare(VERSION, '1.5.6.5', '>=')) {
