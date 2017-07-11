@@ -276,11 +276,34 @@
                 public function format($number, $currency = '', $value = '', $format = true) {
             ]]></search>
             <add><![CDATA[
-  	public function getPayLikeAmount($number, $currency = '') {
+  	public function getPayLikeAmount($number, $currency = '', $value = '', $format = true) {	
 	  	require_once(DIR_SYSTEM . 'library/Paylike/Currencies.php');
-	  	$multiplier = getPaylikeCurrencyMultiplier($currency);
+	  	$exponent = getPaylikeCurrency($currency);
 			  	
-		   return ceil($number*$multiplier);
+		if ($currency && $exponent) {
+	      		$decimal_place = $exponent;
+	    	} else {
+	      		$decimal_place = 2;			
+				$currency = $this->code;
+	    	}
+	
+	    	if ($value) {
+	      		$value = $value;
+	    	} else {
+	    	    if(isset($this->currencies[$currency]['value'])){
+	      		    $value = $this->currencies[$currency]['value'];
+	      		}
+	    	}
+	
+	    	if ($value) {
+	      		$value = (float)$number * $value;
+	    	} else {
+	      		$value = $number;
+	    	}
+		
+	    	$string = number_format(round($value, (int)$decimal_place), (int)$decimal_place, '.', '') * 100;
+	
+	    	return $string;
   	}
             ]]></add>
         </operation>
