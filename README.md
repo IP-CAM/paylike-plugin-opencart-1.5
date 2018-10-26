@@ -5,9 +5,11 @@ available by the community.
 
 Released under the MIT license: https://opensource.org/licenses/MIT
 
-### Supported OpenCart versions
+## Supported OpenCart versions
 
-- 1.5
+* The plugin has been tested with most versions of Opencart at every iteration. We recommend using the latest version of Opencart, but if that is not possible for some reason, test the plugin with your Opencart version and it would probably function properly. 
+* Opencart
+ version last tested on: *1.5.6.4*
 
 ### Prerequisites
 
